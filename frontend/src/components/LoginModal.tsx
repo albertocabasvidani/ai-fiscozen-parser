@@ -24,9 +24,13 @@ export function LoginModal({ isOpen, onClose, onLoginSuccess }: LoginModalProps)
 
     try {
       const result = await fiscozenAPI.login(email, password);
+      console.log('🔍 LOGIN DEBUG - Result:', result);
       
-      if (result.success && result.token) {
-        onLoginSuccess(result.token);
+      if (result.success) {
+        // Token potrebbe essere undefined con session-based auth, usiamo un placeholder
+        const token = result.token || 'session-based';
+        console.log('✅ LOGIN SUCCESS - Token:', token);
+        onLoginSuccess(token);
         onClose();
         setEmail('');
         setPassword('');
