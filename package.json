@@ -1,0 +1,27 @@
+{
+  "name": "ai-fiscozen-parser",
+  "version": "1.0.0",
+  "description": "Web application for automatic client data extraction and Fiscozen API integration",
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "start": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend && nodemon server.js",
+    "frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "dev": "npm run start"
+  },
+  "keywords": [
+    "fiscozen",
+    "ai",
+    "data-extraction"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.2"
+  },
+  "dependencies": {
+    "playwright": "^1.55.0"
+  }
+}
