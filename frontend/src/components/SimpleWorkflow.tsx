@@ -162,6 +162,8 @@ Rispondi con JSON con questa struttura:
   const handleCreateInvoice = async () => {
     setLoading(true);
     try {
+      // App sempre usa API reali - nessun mock data
+      
       // Dati per la fattura secondo il formato backend
       const invoiceData = {
         client: {
@@ -184,11 +186,13 @@ Rispondi con JSON con questa struttura:
       };
 
       const API_BASE = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
       const response = await fetch(`${API_BASE}/fiscozen/invoices`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
         body: JSON.stringify(invoiceData),
       });
 

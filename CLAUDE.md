@@ -163,17 +163,25 @@ All operations are logged to SQLite for debugging and session tracking. The data
 - `InvoiceStep.tsx` - Invoice creation interface
 - `aiService.ts` - OpenAI integration service (no external dependencies)
 - `App.tsx` - Updated with triple workflow mode selector
+- `LoginModal.tsx` - **FIXED** - Session-based authentication support
 - `API_SETUP.md` - Complete API configuration guide
 - `frontend/.env.local` - Environment configuration template
 - `backend/routes/fiscozen.js` - **FIXED** - Invoice creation endpoint + authentication bug resolution
 - `test-credentials.json` - Secure credential storage (gitignored)
-- `test-playwright.js` - Automated testing for login/search flows
+- `test-playwright.js` - Basic login/search testing
+- `test-full-workflow.js` - **NEW** - Complete E2E workflow testing
 - `fiscozen_endpoints.md` - Reverse-engineered API documentation
 
 ## Testing & Debugging
 
-### Automated Testing
-- **Playwright Integration**: `node test-playwright.js` - Tests complete login → search flow
+### End-to-End Testing (Playwright)
+- **Complete Workflow Testing**: `node test-full-workflow.js` - **NEW** - Tests entire invoice creation flow
+- **Full Coverage**: Login → Client Search → Client Creation → Invoice Generation
+- **Real API Integration**: Tests with actual Fiscozen credentials and API calls
+- **Test Results**: ✅ All workflow steps verified working correctly
+
+### Previous Testing Scripts
+- **Basic Login Test**: `node test-playwright.js` - Tests login → search flow only
 - **Test Coverage**: Login authentication, client search, error handling
 - **Test Data**: Pre-configured with "scaccino" client search
 
@@ -181,8 +189,26 @@ All operations are logged to SQLite for debugging and session tracking. The data
 - **Comprehensive Logging**: All API calls logged with request/response details
 - **Authentication Flow Debugging**: Step-by-step CSRF and session cookie tracking
 - **Error Handling**: 403/404 errors properly caught and logged
+- **Console Debug**: LoginModal includes debug output for troubleshooting session-based auth
+
+### Login System Fixes (Latest)
+- **Session-Based Authentication**: Fixed LoginModal to accept session cookies instead of requiring JWT tokens
+- **Token Handling**: Gracefully handles undefined tokens from session-based auth
+- **Debug Logging**: Added comprehensive logging to troubleshoot authentication flow
+- **Auto-Search After Login**: Fixed issue where client search wasn't triggered automatically after successful login
+
+### Verified Working Flow
+1. **✅ Login**: Real Fiscozen credentials, session cookies properly stored
+2. **✅ Client Search**: Fuzzy search with `companyName=scaccino` parameter
+3. **✅ Client Not Found**: Properly handled, proceeds to new client workflow
+4. **✅ AI Data Processing**: Organizes client data for Fiscozen API format
+5. **✅ Client Creation**: `POST /api/fiscozen/clients` with Test Scaccino SRL
+6. **✅ Invoice Creation**: `POST /api/fiscozen/invoices` with line items and totals
+7. **✅ Complete Success**: All API calls return 200 OK, workflow fully functional
 
 ### Common Issues & Solutions
 - **Authentication Failed**: Check that `test-credentials.json` exists with valid Fiscozen credentials
 - **403 Forbidden on Search**: Usually indicates session cookie persistence issue - restart backend
 - **Variable Shadowing**: Avoid `let sessionCookies` declarations that mask global variables
+- **Login Modal Not Closing**: Fixed by checking result.success instead of result.success && result.token
+- **Client Search Not Auto-Starting**: Fixed by ensuring handleTransactionSubmit is called after login

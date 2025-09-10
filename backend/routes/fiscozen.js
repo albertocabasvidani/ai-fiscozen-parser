@@ -29,23 +29,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email and password required' });
     }
 
-    // For development, still allow real API calls if credentials are provided
-    // Only use mock if we're explicitly testing without real credentials
-    const useMock = process.env.NODE_ENV === 'development' && (!email.includes('@') || email === 'test@test.com');
-    
-    if (useMock) {
-      console.log('🎭 Using mock login for:', email);
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock successful login
-      authToken = 'mock-auth-token-' + Date.now();
-      tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-      await database.log('info', 'Mock login successful', { email });
-      
-      return res.json({ success: true, token: authToken });
-    }
+    // ALWAYS use real Fiscozen API - no mock data
 
     // Production Fiscozen API integration
     console.log('🌐 Attempting real Fiscozen API login to:', FISCOZEN_BASE_URL);
@@ -236,42 +220,7 @@ router.get('/search', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Company name required' });
     }
 
-    // Use mock only for testing, otherwise use real Fiscozen API
-    const useMock = process.env.NODE_ENV === 'development' && !authToken.startsWith('fiscozen-');
-    
-    if (useMock) {
-      console.log('🎭 Using mock search for:', companyName);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Mock database of companies for more realistic search
-      const mockCompanies = [
-        { ragioneSociale: 'Mario Scaccino', partitaIVA: '12345678900', id: 'scaccino-1', comune: 'Milano', provincia: 'MI' },
-        { ragioneSociale: 'Scaccino & Partners SRL', partitaIVA: '12345678909', id: 'scaccino-2', comune: 'Roma', provincia: 'RM' },
-        { ragioneSociale: 'Stripe Inc', partitaIVA: '12345678901', id: 'stripe-1' },
-        { ragioneSociale: 'Stripe Italy SRL', partitaIVA: '12345678902', id: 'stripe-2' },
-        { ragioneSociale: 'Apple Inc', partitaIVA: '11111111111', id: 'apple-1' },
-        { ragioneSociale: 'Google LLC', partitaIVA: '22222222222', id: 'google-1' },
-        { ragioneSociale: 'Microsoft Corporation', partitaIVA: '33333333333', id: 'microsoft-1' },
-        { ragioneSociale: 'Amazon.com Inc', partitaIVA: '44444444444', id: 'amazon-1' },
-        { ragioneSociale: 'Meta Platforms Inc', partitaIVA: '55555555555', id: 'meta-1' },
-        { ragioneSociale: 'Tesla Inc', partitaIVA: '66666666666', id: 'tesla-1' },
-        { ragioneSociale: 'Netflix Inc', partitaIVA: '77777777777', id: 'netflix-1' },
-        { ragioneSociale: 'Spotify Technology SA', partitaIVA: '88888888888', id: 'spotify-1' }
-      ];
-
-      // Search logic: find companies that contain the search term (case insensitive)
-      const searchTerm = companyName.toLowerCase().trim();
-      console.log('🔍 Searching mock database for term:', searchTerm);
-      const mockResults = mockCompanies.filter(company => 
-        company.ragioneSociale.toLowerCase().includes(searchTerm) ||
-        (partitaIVA && company.partitaIVA === partitaIVA)
-      );
-      console.log('🎯 Mock search results:', mockResults.length, 'matches');
-
-      await database.log('info', 'Mock search completed', { companyName, resultsCount: mockResults.length });
-      
-      return res.json({ success: true, results: mockResults });
-    }
+    // ALWAYS use real Fiscozen API - no mock data
 
     // Production Fiscozen API integration
     console.log('🌐 Using real Fiscozen API search');
@@ -364,24 +313,7 @@ router.post('/validate-vat', async (req, res) => {
       return res.json({ valid: false, error: 'Invalid VAT format' });
     }
 
-    // Mock validation for development
-    if (process.env.NODE_ENV === 'development') {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const mockValidation = {
-        valid: Math.random() > 0.3,
-        details: {
-          vatNumber: cleanVat,
-          country: 'IT',
-          companyName: 'Mock Company Name',
-          address: 'Mock Address, Italy'
-        }
-      };
-
-      await database.log('info', 'Mock VAT validation', { partitaIVA, valid: mockValidation.valid });
-      
-      return res.json(mockValidation);
-    }
+    // ALWAYS use real VAT validation service - no mock data
 
     // Production VAT validation using EU VIES service or Italian AdE API
     const vatResponse = await axios.get(`https://ec.europa.eu/taxation_customs/vies/services/checkVatService`, {
@@ -414,22 +346,7 @@ router.get('/location/:cap', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Valid CAP required' });
     }
 
-    // Mock location data for development
-    if (process.env.NODE_ENV === 'development') {
-      const mockLocations = {
-        '20121': { comune: 'Milano', provincia: 'MI' },
-        '00100': { comune: 'Roma', provincia: 'RM' },
-        '10100': { comune: 'Torino', provincia: 'TO' },
-        '40100': { comune: 'Bologna', provincia: 'BO' },
-        '50100': { comune: 'Firenze', provincia: 'FI' }
-      };
-
-      const location = mockLocations[cap] || { comune: 'Comune Sconosciuto', provincia: 'XX' };
-      
-      await database.log('info', 'Mock location lookup', { cap, location });
-      
-      return res.json(location);
-    }
+    // ALWAYS use real location API service - no mock data
 
     // Production location lookup - could use Italian postal service API
     const locationResponse = await axios.get(`https://api.zippopotam.us/IT/${cap}`);
@@ -454,78 +371,225 @@ router.get('/location/:cap', async (req, res) => {
 // Create new invoice
 router.post('/invoices', async (req, res) => {
   try {
+    console.log('📄 =================================');
+    console.log('📄 INVOICE CREATION REQUEST STARTED');
+    console.log('📄 =================================');
+    
     if (!isTokenValid()) {
+      console.log('❌ Authentication failed - no valid token');
+      await database.log('error', 'Invoice creation - Authentication failed');
       return res.status(401).json({ success: false, error: 'Not authenticated' });
     }
 
     const invoiceData = req.body;
+    console.log('📋 Invoice data received:', JSON.stringify(invoiceData, null, 2));
 
     if (!invoiceData.client?.ragioneSociale || !invoiceData.lineItems?.length) {
+      console.log('❌ Invalid invoice data - missing client or line items');
+      await database.log('error', 'Invoice creation - Invalid data', { invoiceData });
       return res.status(400).json({ 
         success: false, 
         error: 'Client data and line items required' 
       });
     }
 
-    // Mock invoice creation for development
-    if (process.env.NODE_ENV === 'development') {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockInvoiceId = 'INV-' + Date.now();
-      const mockInvoiceNumber = 'FAT-' + new Date().getFullYear() + '-' + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
-      
-      await database.log('info', 'Mock invoice created', { 
-        invoiceId: mockInvoiceId,
-        invoiceNumber: mockInvoiceNumber,
-        clientName: invoiceData.client.ragioneSociale,
-        total: invoiceData.total,
-        lineItemsCount: invoiceData.lineItems.length
-      });
-      
-      return res.json({ 
-        success: true, 
-        id: mockInvoiceId,
-        invoiceNumber: mockInvoiceNumber,
-        message: 'Invoice created successfully'
+    console.log('🏢 Client:', invoiceData.client.ragioneSociale);
+    console.log('📊 Line items count:', invoiceData.lineItems.length);
+    console.log('💰 Total amount:', invoiceData.total);
+    console.log('🔐 Using session cookies:', sessionCookies ? 'YES' : 'NO');
+    console.log('🔑 Auth token available:', authToken ? 'YES' : 'NO');
+
+    // Real Fiscozen API integration - Follow discovered workflow
+    console.log('🌐 Creating invoice on Fiscozen API using discovered workflow...');
+    
+    let customerId = invoiceData.client.id;
+    
+    // Step 1: If no client ID, search for client first
+    if (!customerId && invoiceData.client.ragioneSociale) {
+      console.log('🔍 Step 1: Searching for client...');
+      try {
+        const searchResponse = await axios.get(`${FISCOZEN_BASE_URL}/api/v1/customers/`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': sessionCookies,
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json, text/plain, */*'
+          },
+          params: {
+            search: invoiceData.client.ragioneSociale,
+            page: 1
+          }
+        });
+        
+        console.log('📊 Client search results:', searchResponse.data.results?.length || 0);
+        if (searchResponse.data.results?.length > 0) {
+          customerId = searchResponse.data.results[0].id;
+          console.log('✅ Found existing client ID:', customerId);
+        }
+      } catch (searchError) {
+        console.log('⚠️  Client search failed:', searchError.message);
+      }
+    }
+    
+    // Step 2: If still no client ID, client needs to be created first
+    if (!customerId) {
+      console.log('❌ No client ID found - client must be created first');
+      return res.status(400).json({
+        success: false,
+        error: 'Client not found. Please create client first.',
+        needsClientCreation: true
       });
     }
-
-    // Production Fiscozen API integration
-    const createResponse = await axios.post(`${FISCOZEN_BASE_URL}/api/invoices`, invoiceData, {
-      headers: { 
-        Authorization: `Bearer ${authToken}`,
-        'Content-Type': 'application/json'
+    
+    // Step 3: Get client details for invoice date
+    console.log('📋 Step 2: Getting client details for invoice...');
+    const clientDetailsResponse = await axios.get(`${FISCOZEN_BASE_URL}/api/v1/customers/${customerId}/`, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': sessionCookies,
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json, text/plain, */*'
+      },
+      params: {
+        invoice_date: invoiceData.date
       }
     });
+    
+    console.log('✅ Client details retrieved for invoice');
+    
+    // Step 4: Create invoice data in the format that Fiscozen expects
+    console.log('🔥 Step 3: Creating invoice with discovered format...');
+    
+    // Create invoice data in the format that Fiscozen expects for actual invoice creation
+    const directInvoiceData = {
+      customer: customerId,
+      invoice_date: invoiceData.date,
+      payment_due_date: invoiceData.paymentDate || invoiceData.date,
+      self_invoice: false, // Required field: false for normal invoices, true for autofattura
+      rows: [{
+        key: 'row1',
+        description: invoiceData.lineItems[0].description,
+        quantity: null, // Fiscozen often uses null for quantity
+        amount: invoiceData.lineItems[0].unitPrice.toString(),
+        total: invoiceData.lineItems[0].unitPrice.toString(),
+        invoice_vat: {
+          id: 24, // Use the ID observed from Fiscozen API
+          law: "OPERAZIONI NON SOGGETTE A IVA AI SENSI DEGLI ARTICOLI DA 7 A 7-SEPTIES DEL DPR 633/1972",
+          code: "NS7", // Code for Switzerland export observed in Playwright
+          kind: "N2.2",
+          value: "0.00",
+          invoice_note: "Operazioni non soggette a Iva ai sensi degli articoli da 7 a 7-septies del Dpr 633/1972",
+          readable_value: "–"
+        },
+        welfare_applied: false,
+        enasarco_applied: false,
+        ex_enpals_applied: false
+      }],
+      notes: invoiceData.notes ? [invoiceData.notes] : [],
+      currency_code: 'EUR',
+      fiscal_regime: 'Forfettario',
+      payment_method: null,
+      service_kind: '',
+      enasarco_rate: 0,
+      welfare_perc: '0%',
+      add_welfare_row: false,
+      add_tax_stamp_row: false,
+      ex_enpals_applied: false,
+      welfare_applicable: false,
+      tax_stamp_applicable: false,
+      withholding_tax_applicable: false
+    };
+    
+    console.log('📤 Direct invoice data:', JSON.stringify(directInvoiceData, null, 2));
+    
+    const requestConfig = {
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cookie': sessionCookies,
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Referer': 'https://app.fiscozen.it/app/fatture/nuova',
+        'Origin': 'https://app.fiscozen.it',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'it-IT,it;q=0.9,en;q=0.8'
+      }
+    };
+    
+    console.log('📤 Request headers:', JSON.stringify(requestConfig.headers, null, 2));
+    
+    // Direct invoice creation
+    const createUrl = `${FISCOZEN_BASE_URL}/api/v1/invoices/`;
+    console.log('🔗 Create URL:', createUrl);
+    
+    const createResponse = await axios.post(createUrl, directInvoiceData, requestConfig);
+
+    console.log('📥 Fiscozen API Response Status:', createResponse.status);
+    console.log('📥 Fiscozen API Response Headers:', JSON.stringify(createResponse.headers, null, 2));
+    console.log('📥 Fiscozen API Response Data:', JSON.stringify(createResponse.data, null, 2));
 
     const invoiceId = createResponse.data.id || createResponse.data.invoiceId;
     const invoiceNumber = createResponse.data.invoiceNumber;
     
-    await database.log('info', 'Fiscozen invoice created', { 
+    console.log('✅ REAL invoice created successfully!');
+    console.log('🆔 Invoice ID:', invoiceId);
+    console.log('🔢 Invoice Number:', invoiceNumber);
+    
+    await database.log('info', 'Fiscozen invoice created (REAL API)', { 
       invoiceId,
       invoiceNumber,
       clientName: invoiceData.client.ragioneSociale,
-      total: invoiceData.total
+      total: invoiceData.total,
+      responseStatus: createResponse.status
     });
+
+    console.log('📄 ================================');
+    console.log('📄 REAL INVOICE CREATION COMPLETE');
+    console.log('📄 ================================');
 
     res.json({ 
       success: true, 
       id: invoiceId,
-      invoiceNumber: invoiceNumber
+      invoiceNumber: invoiceNumber,
+      message: 'Real invoice created successfully on Fiscozen'
     });
 
   } catch (error) {
-    console.error('Invoice creation error:', error.message);
-    await database.log('error', 'Invoice creation error', { error: error.message });
+    console.log('❌ ================================');
+    console.log('❌ INVOICE CREATION ERROR OCCURRED');
+    console.log('❌ ================================');
+    console.error('💥 Error message:', error.message);
+    console.error('📊 Error status:', error.response?.status);
+    console.error('📊 Error data:', JSON.stringify(error.response?.data, null, 2));
+    console.error('🔗 Error URL:', error.config?.url);
+    console.error('📤 Error request data:', JSON.stringify(error.config?.data, null, 2));
+    
+    await database.log('error', 'Invoice creation error (DETAILED)', { 
+      error: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      responseData: error.response?.data,
+      requestUrl: error.config?.url,
+      requestData: error.config?.data
+    });
     
     if (error.response?.status === 401) {
+      console.log('🔐 Authentication expired, clearing tokens...');
       authToken = null;
       tokenExpiry = null;
+      sessionCookies = null;
     }
+    
+    console.log('❌ ======================');
+    console.log('❌ ERROR HANDLING COMPLETE');  
+    console.log('❌ ======================');
     
     res.status(error.response?.status || 500).json({ 
       success: false, 
-      error: error.response?.data?.message || error.message 
+      error: error.response?.data?.message || error.message,
+      details: error.response?.data || {}
     });
   }
 });
@@ -543,22 +607,7 @@ router.post('/clients', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Company name required' });
     }
 
-    // Mock client creation for development
-    if (process.env.NODE_ENV === 'development') {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockClientId = 'mock-client-' + Date.now();
-      
-      await database.log('info', 'Mock client created', { 
-        clientId: mockClientId, 
-        ragioneSociale: clientData.ragioneSociale 
-      });
-      
-      return res.json({ success: true, id: mockClientId });
-    }
-
-    // Production Fiscozen API integration
-    const realToken = authToken.replace('fiscozen-', ''); 
+    // ALWAYS use real Fiscozen API - no mock data
     console.log('🌐 Creating client on Fiscozen API:', `${FISCOZEN_BASE_URL}/api/v1/customers/`);
     
     // Trasforma i dati nel formato Fiscozen
@@ -582,9 +631,13 @@ router.post('/clients', async (req, res) => {
     
     const createResponse = await axios.post(`${FISCOZEN_BASE_URL}/api/v1/customers/`, fiscozenClientData, {
       headers: { 
-        Authorization: `Bearer ${realToken}`,
         'Content-Type': 'application/json',
-        'X-Requested-With': 'XMLHttpRequest'
+        'Cookie': sessionCookies,
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Referer': 'https://app.fiscozen.it/app/clienti',
+        'Origin': 'https://app.fiscozen.it',
+        'Accept': 'application/json, text/plain, */*'
       }
     });
 
