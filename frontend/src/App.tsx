@@ -7,9 +7,10 @@ import { CreateStep } from './components/CreateStep';
 import { InvoiceStep } from './components/InvoiceStep';
 import { FastWorkflow } from './components/FastWorkflow';
 import { SimpleWorkflow } from './components/SimpleWorkflow';
+import { ClientCreator } from './components/ClientCreator';
 
 function App() {
-  const [workflowMode, setWorkflowMode] = useState<'simple' | 'auto' | 'manual'>('simple');
+  const [workflowMode, setWorkflowMode] = useState<'simple' | 'auto' | 'client' | 'manual'>('simple');
   const [currentStep, setCurrentStep] = useState(1);
   const [clientData, setClientData] = useState<ClientData | null>(null);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -112,6 +113,16 @@ function App() {
               💰 Da Pagamento
             </button>
             <button
+              onClick={() => setWorkflowMode('client')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                workflowMode === 'client' 
+                  ? 'bg-purple-600 text-white' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              👥 Solo Cliente
+            </button>
+            <button
               onClick={() => setWorkflowMode('manual')}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 workflowMode === 'manual' 
@@ -136,6 +147,8 @@ function App() {
             <SimpleWorkflow onComplete={handleWorkflowComplete} />
           ) : workflowMode === 'auto' ? (
             <FastWorkflow onComplete={handleWorkflowComplete} />
+          ) : workflowMode === 'client' ? (
+            <ClientCreator onComplete={handleClientCreated} />
           ) : (
             <div className="max-w-4xl mx-auto">
               {currentStep === 1 && (

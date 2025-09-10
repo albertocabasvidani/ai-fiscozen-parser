@@ -1,23 +1,24 @@
 # 🤖 AI Fiscozen Parser
 
-Un'applicazione web locale per l'estrazione automatica di dati clienti e integrazione con Fiscozen API, utilizzando Claude AI tramite integrazione manuale copy/paste.
+Un'applicazione web locale per la creazione automatica di fatture dai dati di pagamento utilizzando AI e integrandosi con l'API Fiscozen. Supporta integrazione OpenAI per l'estrazione automatica dei dati con fallback regex quando non disponibile.
 
 ## ✨ Caratteristiche
 
 - 🏠 **Completamente Locale**: Esecuzione su localhost, nessun server esterno
-- 🤖 **Integrazione Claude**: Workflow fluido con Claude tramite copy/paste
+- 🤖 **AI Integration**: OpenAI GPT-4o-mini per estrazione automatica dati + fallback regex
+- 🔄 **Triple Workflow**: Semplificato / Automatico / Manuale per massima flessibilità
+- 🎯 **Smart Client Search**: Ricerca intelligente fuzzy matching nel database Fiscozen
 - 🔒 **Privacy Totale**: Tutti i dati rimangono sul tuo PC
 - 💾 **Database Locale**: SQLite per sessioni e log persistenti
-- 🎯 **3-Step Workflow**: Estrazione → Ricerca → Creazione
-- 🔄 **Fiscozen API**: Integrazione completa per ricerca e creazione clienti
-- 📊 **Export Dati**: Esporta sessioni in CSV/JSON
+- 📄 **Invoice Creation**: Creazione fatture complete con integrazione Fiscozen API
+- 📊 **Session Management**: Autenticazione basata su sessioni con token CSRF
 
 ## 🛠️ Stack Tecnologico
 
 - **Frontend**: React + TypeScript + Tailwind CSS + Vite
 - **Backend**: Node.js + Express + SQLite
 - **Database**: SQLite per cache locale e sessioni
-- **AI Integration**: Claude (manuale via copy/paste)
+- **AI Integration**: OpenAI GPT-4o-mini API + Regex fallback
 
 ## 🚀 Quick Start
 
@@ -43,57 +44,65 @@ npm start
 ```
 
 Questo avvierà:
-- 🌐 Frontend: http://localhost:3000
+- 🌐 Frontend: http://localhost:5173 (Vite dev server)
 - ⚙️ Backend: http://localhost:3001
-- 🗄️ Database: `./database/sessions.db`
+- 🗄️ Database: `./backend/database/sessions.db`
 
 ## 📋 Come Funziona
 
-### Step 1: Estrazione Dati 📋
+L'applicazione offre **3 modalità workflow** per massima flessibilità:
 
-1. **Incolla il testo** contenente i dati del cliente
-2. **Clicca "Genera Prompt per Claude"** - Si apre un modal con il prompt
-3. **Copia il prompt** negli appunti
-4. **Apri Claude** (web o desktop) e incolla il prompt
-5. **Copia la risposta JSON** di Claude
-6. **Torna all'app** e incolla nel campo "Risposta Claude"
-7. **Clicca "Processa Dati"** - L'app valida e estrae i dati
+### ⚡ Flusso Semplificato (RACCOMANDATO)
 
-### Step 2: Ricerca Cliente 🔍
+1. **Input Transazione**: Inserisci importo, nome cliente, data, descrizione
+2. **Ricerca Smart**: Ricerca intelligente nel database Fiscozen con fuzzy matching
+3. **Selezione Cliente**: Se trovato → procedi | Se non trovato → raccogli dati cliente
+4. **AI Processing**: L'AI analizza e organizza i dati per l'API Fiscozen
+5. **Review Dati**: Conferma le informazioni cliente parsate dall'AI
+6. **Creazione Cliente**: Auto-creazione in Fiscozen se necessario
+7. **Fattura Draft**: Creazione fattura in bozza con impostazioni predefinite
 
-1. **Inserisci credenziali Fiscozen** (email/password)
-2. L'app cerca automaticamente il cliente in Fiscozen
-3. **Valida P.IVA** (opzionale) tramite servizi esterni
-4. **Risultato**: Cliente esistente o non trovato
+### 💰 Da Pagamento (Automatico)
 
-### Step 3: Creazione Cliente ✨
+1. **Input Pagamento**: Incolla testo pagamento (email, ricevute, notifiche)
+2. **Estrazione AI**: OpenAI GPT-4o-mini estrae automaticamente dati cliente/fattura
+3. **Review Dati**: Visualizzazione dati transazione con status estrazione cliente
+4. **Editing Cliente**: Form cliente separato con dati transazione preservati
+5. **Preview Fattura**: Anteprima fattura completa con tutti i dati
+6. **Creazione**: Sottomissione finale all'API backend
 
-- **Se cliente esiste**: Workflow terminato ✅
-- **Se cliente non esiste**: Form pre-compilato per creazione
-- **Auto-completamento**: CAP → Comune/Provincia automatico
-- **Creazione**: Invio dati a Fiscozen e conferma
+### 🔧 Manuale (4-step wizard)
+
+1. **ExtractStep**: Inserimento manuale o generazione prompt Claude
+2. **SearchStep**: Ricerca cliente nel database Fiscozen
+3. **CreateStep**: Creazione nuovo cliente se necessario  
+4. **InvoiceStep**: Creazione fattura con voci, totali, codici ATECO
 
 ## 🔧 Configurazione
 
-### Variabili Ambiente (.env.local)
+### Variabili Ambiente (frontend/.env.local)
 
 ```bash
-# API Fiscozen
-FISCOZEN_BASE_URL=https://app.fiscozen.it
+# OpenAI API (Opzionale - usa fallback regex se non presente)
+VITE_OPENAI_API_KEY=sk-your-openai-api-key
 
-# Server Ports
-FRONTEND_PORT=3000
-BACKEND_PORT=3001
+# Backend URL
+VITE_BACKEND_URL=http://localhost:3001
+
+# Fiscozen API
+FISCOZEN_BASE_URL=https://app.fiscozen.it
 
 # Environment
 NODE_ENV=development
 ```
 
+**Nota**: Senza `VITE_OPENAI_API_KEY`, l'app funziona comunque usando regex fallback + form manuali.
+
 ### Database Locale
 
 Il database SQLite viene creato automaticamente in:
-- 📊 **Sessioni**: `./database/sessions.db`
-- 📝 **Logs**: Tabella `logs` con tutti gli eventi
+- 📊 **Sessioni**: `./backend/database/sessions.db`
+- 📝 **Logs**: Tabella `logs` con tutti gli eventi API e workflow
 
 ## 🎨 UI/UX Features
 
@@ -102,18 +111,18 @@ Il database SQLite viene creato automaticamente in:
 - Indicatore verde "Modalità Locale" sempre visibile
 - Tutti i dati restano sul PC dell'utente
 
-### 🔄 Progress Navigation
+### 🔄 Workflow Mode Selector
 
-- Step 1: 📋 Estrazione Dati (Blu quando attivo)
-- Step 2: 🔍 Ricerca Cliente (Verde quando completato)  
-- Step 3: ✨ Creazione Cliente (Finale)
+- ⚡ **Flusso Semplificato**: Verde quando attivo (RACCOMANDATO)
+- 💰 **Da Pagamento**: Blu quando attivo (Automatico)  
+- 🔧 **Manuale**: Arancione quando attivo (4-step wizard)
 
-### 🤖 Claude Integration UI
+### 🤖 AI Integration UI
 
-- **Modal intuitivo** con istruzioni passo-passo
-- **Copy to Clipboard** automatico
-- **Validazione JSON** con error handling elegante
-- **Preview dati estratti** in card strutturata
+- **OpenAI Status Indicator**: Mostra stato configurazione API key
+- **Smart Data Extraction**: Parsing automatico testi pagamento
+- **Fallback Regex**: Pattern matching locale per importi, P.IVA, aziende
+- **Manual Fallback Forms**: Form completi quando AI non disponibile
 
 ### 📱 Responsive Design
 
@@ -127,9 +136,8 @@ Il database SQLite viene creato automaticamente in:
 
 - `POST /api/fiscozen/login` - Login Fiscozen
 - `GET /api/fiscozen/search` - Ricerca clienti
-- `POST /api/fiscozen/validate-vat` - Validazione P.IVA
-- `GET /api/fiscozen/location/:cap` - Lookup comune da CAP
 - `POST /api/fiscozen/clients` - Creazione cliente
+- `POST /api/fiscozen/invoices` - Creazione fattura
 - `POST /api/data/sessions` - Salva sessione
 - `GET /api/data/sessions` - Lista sessioni
 
@@ -193,13 +201,14 @@ lsof -i :3001
 
 1. ✅ Backend attivo su porta 3001?
 2. ✅ CORS configurato correttamente?
-3. ✅ `.env.local` presente?
+3. ✅ `frontend/.env.local` presente con `VITE_BACKEND_URL`?
 
-### Claude Integration Issues
+### AI Integration Issues
 
-1. **Prompt non si copia**: Provare copy manuale dal modal
-2. **JSON non valido**: Assicurarsi di copiare solo il JSON da Claude
-3. **Campi mancanti**: Claude potrebbe non aver trovato tutti i dati
+1. **OpenAI API Error**: Verifica `VITE_OPENAI_API_KEY` in `.env.local`
+2. **Network Error on Login**: Fiscozen API potrebbe essere offline
+3. **Extraction Failed**: Usa fallback regex o modalità manuale
+4. **Missing Data**: AI potrebbe non aver trovato tutti i campi necessari
 
 ## 📈 Development
 
@@ -224,41 +233,45 @@ ai-fiscozen-parser/
 ├── frontend/                # React + TypeScript App
 │   ├── src/
 │   │   ├── components/      # Componenti React
-│   │   │   ├── ExtractStep.tsx
-│   │   │   ├── SearchStep.tsx  
-│   │   │   ├── CreateStep.tsx
-│   │   │   ├── Navigation.tsx
-│   │   │   └── ClaudePromptModal.tsx
+│   │   │   ├── SimpleWorkflow.tsx    # 🌟 CURRENT - Flusso semplificato
+│   │   │   ├── FastWorkflow.tsx      # 🌟 CURRENT - Da pagamento
+│   │   │   ├── ExtractStep.tsx       # Manual workflow step 1
+│   │   │   ├── SearchStep.tsx        # Manual workflow step 2
+│   │   │   ├── CreateStep.tsx        # Manual workflow step 3
+│   │   │   ├── InvoiceStep.tsx       # Manual workflow step 4
+│   │   │   ├── Navigation.tsx        # Step navigation
+│   │   │   └── LoginModal.tsx        # Fiscozen authentication
 │   │   ├── services/        # API clients
-│   │   │   ├── claudeIntegration.ts
-│   │   │   └── fiscozenAPI.ts
+│   │   │   ├── aiService.ts          # 🤖 OpenAI integration
+│   │   │   └── fiscozenAPI.ts        # Fiscozen API client
 │   │   ├── types/           # TypeScript types
-│   │   └── App.tsx          # Main App
+│   │   │   └── client.ts             # Client/Invoice types
+│   │   └── App.tsx          # Main App with mode selector
 ├── backend/                 # Node.js API Server
 │   ├── routes/              # API Routes
-│   │   ├── fiscozen.js      # Fiscozen API proxy
+│   │   ├── fiscozen.js      # 🔄 Fiscozen API proxy + Invoice creation
 │   │   └── data.js          # Local data management
 │   ├── database/            # Database setup
-│   │   └── sqlite.js        # SQLite connection
+│   │   ├── sqlite.js        # SQLite connection
+│   │   └── sessions.db      # 💾 Created automatically
 │   ├── middleware/          # Express middleware
 │   └── server.js            # Main server
-├── scripts/                 # Setup/Start scripts
-│   ├── setup.js             # Auto setup
-│   └── start.js             # Startup script
-├── database/                # SQLite files
-│   └── sessions.db          # Created automatically
-├── logs/                    # Application logs
-├── .env.local              # Configuration
+├── test-full-workflow.js    # 🧪 E2E Playwright testing
+├── test-credentials.json    # 🔐 Fiscozen credentials (gitignored)
+├── API_SETUP.md            # OpenAI configuration guide
+├── fiscozen_endpoints.md   # Fiscozen API documentation
+├── frontend/.env.local     # Frontend configuration
 └── package.json            # Main package file
 ```
 
 ## 🔐 Security & Privacy
 
-- ✅ **Zero Cloud Data**: Nessun dato inviato a servizi esterni (tranne Fiscozen)
-- ✅ **Local Storage**: Database SQLite sul PC utente
-- ✅ **No API Keys**: Nessuna chiave Anthropic richiesta
-- ✅ **HTTPS**: Comunicazione sicura con Fiscozen
-- ✅ **Session Management**: Token Fiscozen gestiti localmente
+- ✅ **Zero Cloud Data**: Nessun dato inviato a servizi esterni (tranne OpenAI opzionale + Fiscozen)
+- ✅ **Local Storage**: Database SQLite sul PC utente  
+- ✅ **API Keys Optional**: OpenAI opzionale, funziona con fallback regex
+- ✅ **HTTPS**: Comunicazione sicura con Fiscozen + OpenAI
+- ✅ **Session Management**: Cookie CSRF + token Fiscozen gestiti localmente
+- ✅ **Invoice Status**: Fatture create in stato UNPAID (non automaticamente pagate)
 
 ## 📞 Support
 
@@ -282,12 +295,13 @@ ai-fiscozen-parser/
 
 ### ✅ **Vantaggi**
 
-- **Zero Costi AI**: Usa il tuo abbonamento Claude esistente
+- **AI Integration**: OpenAI GPT-4o-mini con costi minimi (~$0.001-0.005/transazione)
 - **100% Locale**: Nessun deploy, nessun server esterno  
 - **Setup Rapido**: Un comando e funziona tutto
 - **Privacy Totale**: Tutti i dati restano sul tuo PC
-- **Fiscozen Ready**: API reali funzionanti
-- **Persistent Storage**: SQLite per sessioni durature
+- **Fiscozen Ready**: API reali funzionanti con creazione fatture complete
+- **Triple Workflow**: Modalità semplificata/automatica/manuale per ogni scenario
+- **Smart Fallback**: Funziona anche senza OpenAI API key
 
 ### 🎯 **Use Cases Ideali**
 

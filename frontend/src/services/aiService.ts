@@ -20,6 +20,24 @@ interface ExtractionResult {
   error?: string;
 }
 
+interface ClientExtractionResult {
+  success: boolean;
+  data?: {
+    ragioneSociale: string;
+    partitaIVA: string;
+    indirizzo: string;
+    cap: string;
+    comune: string;
+    provincia: string;
+    codiceDestinatario: string;
+    pec: string;
+    email: string;
+    telefono: string;
+    referente: string;
+  };
+  error?: string;
+}
+
 class AIService {
   private apiKey: string = '';
   private baseUrl: string = '';
@@ -177,6 +195,150 @@ Regole:
     };
   }
 
+  async extractClientData(text: string): Promise<ClientExtractionResult> {
+    console.log('Extracting client data with AI...', !!this.apiKey);
+    
+    if (!this.apiKey) {
+      console.log('Using regex fallback for client data');
+      return this.regexClientExtraction(text);
+    }
+
+    try {
+      const prompt = this.buildClientExtractionPrompt(text);
+      
+      const response = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            {
+              role: 'system',
+              content: 'Sei un assistente specializzato nell\'estrazione di dati di clienti/aziende da testi. Rispondi sempre con JSON valido contenente i dati richiesti per la fatturazione italiana.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.1,
+          max_tokens: 1000,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const content = result.choices[0]?.message?.content;
+      
+      if (!content) {
+        throw new Error('Nessuna risposta dall\'AI');
+      }
+
+      const parsedData = JSON.parse(content);
+      
+      return {
+        success: true,
+        data: parsedData
+      };
+
+    } catch (error) {
+      console.error('AI client extraction error:', error);
+      
+      // Fallback su estrazione regex
+      return this.regexClientExtraction(text);
+    }
+  }
+
+  private buildClientExtractionPrompt(text: string): string {
+    return `
+Estrai i dati del cliente/azienda dal testo fornito. Il testo contiene informazioni di un'azienda italiana per la quale devo creare una fattura. Rispondi SOLO con un oggetto JSON valido nel formato specificato.
+
+Testo da analizzare:
+"${text}"
+
+Rispondi con questo formato JSON:
+{
+  "ragioneSociale": "nome completo azienda/cliente",
+  "partitaIVA": "solo i numeri della partita IVA (11 cifre)",
+  "indirizzo": "via/piazza e numero civico",
+  "cap": "codice postale (5 cifre)",
+  "comune": "nome comune/città",
+  "provincia": "sigla provincia (2 lettere maiuscole)",
+  "codiceDestinatario": "codice destinatario se presente",
+  "pec": "indirizzo PEC se presente",
+  "email": "indirizzo email normale se presente",
+  "telefono": "numero di telefono se presente",
+  "referente": "nome persona di riferimento se presente"
+}
+
+Regole specifiche:
+1. Per ragioneSociale: includi tutta la denominazione sociale (SRL, SPA, Società Benefit, ecc.)
+2. Per partitaIVA: estrai solo i numeri, rimuovi spazi e prefissi
+3. Per indirizzo: estrai solo via/piazza e numero civico, NON includere città/provincia
+4. Per cap: deve essere esattamente 5 cifre
+5. Per comune: nome della città senza codice postale
+6. Per provincia: sigla di 2 lettere maiuscole (es: FC, MI, RM)
+7. Per codiceDestinatario: cerca codici alfanumerici di 7 caratteri
+8. Se un dato non è presente nel testo, usa stringa vuota ""
+9. Rispondi SOLO con il JSON, nient'altro
+`;
+  }
+
+  private async regexClientExtraction(text: string): Promise<ClientExtractionResult> {
+    // Estrazione regex come fallback
+    const pivaMatch = text.match(/(?:p\.?iva|partita iva)\s*:?\s*(\d{11})/i);
+    // CAP match più specifico - non deve essere parte della P.IVA
+    const capMatch = text.match(/(?:cap|^|\s)(\d{5})(?:\s|$)/im);
+    const codiceDestMatch = text.match(/(?:codice fatturazione|codice destinatario)\s*:?\s*([A-Z0-9]{7})/i);
+    const emailMatch = text.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+    const pecMatch = text.match(/([a-zA-Z0-9._%+-]+@(?:pec\.|.*pec)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    const phoneMatch = text.match(/(?:tel|telefono|phone)\s*:?\s*([+]?\d{10,15})/i);
+    
+    // Estrai prima riga come ragione sociale
+    const lines = text.trim().split('\n').filter(line => line.trim().length > 0);
+    const ragioneSociale = lines[0] || 'Azienda da identificare';
+    
+    // Cerca indirizzo (tipicamente seconda riga)
+    const indirizzo = lines[1] || '';
+    
+    // Estrai comune e provincia dalla terza riga tipica: "Cesena (FC)"
+    const cittaMatch = lines[2]?.match(/^(.+?)\s*\(([A-Z]{2})\)\s*$/);
+    const comune = cittaMatch ? cittaMatch[1].trim() : '';
+    const provincia = cittaMatch ? cittaMatch[2] : '';
+    
+    // Assicurati che il CAP non sia parte della P.IVA
+    let cap = '';
+    if (capMatch && capMatch[1]) {
+      const pivaNumber = pivaMatch ? pivaMatch[1] : '';
+      if (!pivaNumber.includes(capMatch[1])) {
+        cap = capMatch[1];
+      }
+    }
+    
+    return {
+      success: true,
+      data: {
+        ragioneSociale: ragioneSociale.trim(),
+        partitaIVA: pivaMatch ? pivaMatch[1] : '',
+        indirizzo: indirizzo.trim(),
+        cap,
+        comune,
+        provincia,
+        codiceDestinatario: codiceDestMatch ? codiceDestMatch[1] : '',
+        pec: pecMatch ? pecMatch[1] : '',
+        email: (emailMatch && !pecMatch) ? emailMatch[1] : '',
+        telefono: phoneMatch ? phoneMatch[1] : '',
+        referente: ''
+      }
+    };
+  }
+
   private async mockExtraction(text: string): Promise<ExtractionResult> {
     // Mock per testing senza API key
     await new Promise(resolve => setTimeout(resolve, 1000)); // Simula delay API
@@ -186,4 +348,4 @@ Regole:
 }
 
 export const aiService = new AIService();
-export type { ExtractionResult };
+export type { ExtractionResult, ClientExtractionResult };

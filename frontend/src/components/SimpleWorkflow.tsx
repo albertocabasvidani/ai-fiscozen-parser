@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { fiscozenAPI } from '../services/fiscozenAPI';
-import { aiService } from '../services/aiService';
+import { aiService, type ClientExtractionResult } from '../services/aiService';
 import type { ClientData, SearchResult } from '../types/client';
 import { LoginModal } from './LoginModal';
 
@@ -27,6 +27,7 @@ export function SimpleWorkflow({ onComplete }: SimpleWorkflowProps) {
   const [selectedClient, setSelectedClient] = useState<SearchResult | null>(null);
   const [newClientData, setNewClientData] = useState<ClientData | null>(null);
   const [aiParsedData, setAiParsedData] = useState<ClientData | null>(null);
+  const [clientRawText, setClientRawText] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -82,57 +83,53 @@ export function SimpleWorkflow({ onComplete }: SimpleWorkflowProps) {
 
     setLoading(true);
     try {
-      // L'IA analizza i dati e li suddivide per Fiscozen
-      const prompt = `Analizza questi dati del cliente e organizzali per la creazione su Fiscozen:
-
-Nome/Ragione Sociale: ${newClientData.ragioneSociale}
+      // Usa la nuova funzione AI per parsing cliente
+      const aiResult = await aiService.extractClientData(`
+${newClientData.ragioneSociale}
+${newClientData.indirizzo}
+${newClientData.comune} ${newClientData.provincia}
+P.IVA: ${newClientData.partitaIVA}
 Email: ${newClientData.email}
 Telefono: ${newClientData.telefono}
-Indirizzo: ${newClientData.indirizzo}
-P.IVA: ${newClientData.partitaIVA}
-Altre info: ${newClientData.referente}
-
-Rispondi con JSON con questa struttura:
-{
-  "ragioneSociale": "nome pulito",
-  "partitaIVA": "solo numeri, 11 cifre",
-  "indirizzo": "via completa",
-  "cap": "codice postale",
-  "comune": "città",
-  "provincia": "provincia (2 lettere)",
-  "codiceDestinatario": "XXXXXXX se B2B",
-  "pec": "email PEC se fornita",
-  "email": "email normale",
-  "telefono": "numero pulito",
-  "referente": "nome referente"
-}`;
-
-      const aiResult = await aiService.extractTransactionData(prompt);
-      if (aiResult.success) {
-        const parsedClientData: ClientData = {
-          ragioneSociale: aiResult.data?.clientName || newClientData.ragioneSociale,
-          partitaIVA: aiResult.data?.vatNumber || newClientData.partitaIVA,
-          indirizzo: aiResult.data?.address || newClientData.indirizzo,
-          cap: newClientData.cap,
-          comune: newClientData.comune,
-          provincia: newClientData.provincia,
-          codiceDestinatario: newClientData.codiceDestinatario,
-          pec: newClientData.pec,
-          email: newClientData.email,
-          telefono: newClientData.telefono,
-          referente: newClientData.referente
-        };
-        setAiParsedData(parsedClientData);
+Referente: ${newClientData.referente}
+`);
+      
+      if (aiResult.success && aiResult.data) {
+        setAiParsedData(aiResult.data);
         setStep('ai-review');
       } else {
-        // Se l'AI fallisce, usa i dati originali
+        // Fallback senza AI - usa i dati così come sono
         setAiParsedData(newClientData);
         setStep('ai-review');
       }
     } catch (error) {
-      console.error('Errore parsing AI:', error);
+      console.error('Client data processing error:', error);
       setAiParsedData(newClientData);
       setStep('ai-review');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClientTextParse = async () => {
+    if (!clientRawText.trim()) {
+      alert('Incolla i dati del cliente nel campo testo');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const aiResult = await aiService.extractClientData(clientRawText);
+      
+      if (aiResult.success && aiResult.data) {
+        setAiParsedData(aiResult.data);
+        setStep('ai-review');
+      } else {
+        alert('Errore nel parsing dei dati. Controlla il formato.');
+      }
+    } catch (error) {
+      console.error('Client text parsing error:', error);
+      alert('Errore nel parsing dei dati con AI');
     } finally {
       setLoading(false);
     }
@@ -360,6 +357,46 @@ Rispondi con JSON con questa struttura:
             <h3 className="text-lg font-medium text-gray-700">
               3. Dati del Nuovo Cliente
             </h3>
+            
+            {/* Sezione AI Parsing */}
+            <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+              <h4 className="font-medium text-blue-800 mb-2">
+                🤖 Incolla dati cliente (AI Parsing)
+              </h4>
+              <p className="text-sm text-blue-600 mb-3">
+                Incolla qui i dati del cliente (nome, indirizzo, P.IVA, codice fatturazione) e l'AI li organizzerà automaticamente nei campi corretti:
+              </p>
+              
+              <div className="space-y-3">
+                <textarea
+                  value={clientRawText}
+                  onChange={(e) => setClientRawText(e.target.value)}
+                  placeholder="Esempio:
+Food Hub SRL Società Benefit
+Via Martiri della Libertà 14/C 
+Cesena (FC) 
+P.IVA 04598540401
+Codice fatturazione 6EWHWLT"
+                  className="w-full px-3 py-2 border border-blue-300 rounded-md h-32 text-sm"
+                />
+                
+                <button
+                  onClick={handleClientTextParse}
+                  disabled={loading || !clientRawText.trim()}
+                  className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Elaborando con AI...' : '🚀 Elabora con AI'}
+                </button>
+              </div>
+              
+              <div className="text-xs text-blue-500 mt-2">
+                💡 L'AI funziona con OpenAI API key. Senza API key usa fallback regex.
+              </div>
+            </div>
+
+            <div className="text-center text-gray-500 my-4">
+              ── OPPURE compila manualmente ──
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">

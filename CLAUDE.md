@@ -129,11 +129,11 @@ All operations are logged to SQLite for debugging and session tracking. The data
 - **Solution**: New simplified workflow with intelligent client search, AI-assisted data processing, and fully working Fiscozen API integration
 
 **Key Components**
-- `SimpleWorkflow.tsx` - **NEW** - Perfect streamlined workflow (RECOMMENDED)
-- `FastWorkflow.tsx` - Automated workflow with payment text parsing
-- `ModernUnifiedWorkflow.tsx` - Full-featured modern UI (archived due to performance)
-- `OptimizedWorkflow.tsx` - Intermediate optimization (superseded)
-- `WorkflowComponents.tsx` - Modular card components for modern design
+- `SimpleWorkflow.tsx` - **CURRENT** - Perfect streamlined workflow (RECOMMENDED)
+- `FastWorkflow.tsx` - **CURRENT** - Automated workflow with payment text parsing
+- ~~`ModernUnifiedWorkflow.tsx`~~ - **REMOVED** - Full-featured modern UI (archived due to performance)
+- ~~`OptimizedWorkflow.tsx`~~ - **REMOVED** - Intermediate optimization (superseded)
+- ~~`WorkflowComponents.tsx`~~ - **REMOVED** - Modular card components (only used by removed ModernUnified)
 
 **New Features**
 - **Smart Client Search**: Fuzzy matching with Fiscozen database - finds existing clients even with slight name variations
@@ -180,10 +180,11 @@ All operations are logged to SQLite for debugging and session tracking. The data
 - **Real API Integration**: Tests with actual Fiscozen credentials and API calls
 - **Test Results**: ✅ All workflow steps verified working correctly
 
-### Previous Testing Scripts
-- **Basic Login Test**: `node test-playwright.js` - Tests login → search flow only
-- **Test Coverage**: Login authentication, client search, error handling
-- **Test Data**: Pre-configured with "scaccino" client search
+### Removed Testing Scripts
+- ~~`test-playwright.js`~~ - **REMOVED** - Basic login test (replaced by test-full-workflow.js)
+- ~~All temporary test screenshots~~ - **REMOVED** - 41 PNG files with test results
+- ~~Temporary test scripts~~ - **REMOVED** - 7 JS files (test-explore-clients.js, etc.)
+- ~~Network log files~~ - **REMOVED** - 2 JSON files with API logs
 
 ### Debugging & Logging
 - **Comprehensive Logging**: All API calls logged with request/response details
@@ -208,7 +209,26 @@ All operations are logged to SQLite for debugging and session tracking. The data
 
 ### Common Issues & Solutions
 - **Authentication Failed**: Check that `test-credentials.json` exists with valid Fiscozen credentials
+- **Network Error on Login**: Usually indicates Fiscozen API is temporarily offline - wait and retry
 - **403 Forbidden on Search**: Usually indicates session cookie persistence issue - restart backend
 - **Variable Shadowing**: Avoid `let sessionCookies` declarations that mask global variables
 - **Login Modal Not Closing**: Fixed by checking result.success instead of result.success && result.token
 - **Client Search Not Auto-Starting**: Fixed by ensuring handleTransactionSubmit is called after login
+
+### Repository Maintenance (Latest Updates)
+
+**Codebase Cleanup (September 2025)**
+- **53 unnecessary files removed** from repository and local directory
+- **Obsolete components**: ModernUnifiedWorkflow, OptimizedWorkflow, UnifiedWorkflow, WorkflowComponents
+- **Test artifacts**: All PNG screenshots, temporary test scripts, network logs
+- **Current active components**: Only SimpleWorkflow, FastWorkflow, and manual step components remain
+- **Repository size**: Reduced by 2,319 lines of obsolete code
+- **Clean architecture**: Focused on 3 core workflow modes only
+
+### Invoice Payment Status
+
+**Important Note**: The application creates invoices in **UNPAID status** by default:
+- `payment_due_date` sets the payment deadline, NOT payment completion status
+- To mark invoices as paid, separate Fiscozen API calls would be required
+- Current implementation: Invoice date = Transaction date, Payment due date = Same date
+- Invoices are created as drafts for user review before finalization
